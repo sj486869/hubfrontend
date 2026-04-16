@@ -1,8 +1,0 @@
-node_modules/
-.next/
-
-next-dev.err.log
-next-dev.out.log
-.DS_Store
-.idea/
-.vscode/
