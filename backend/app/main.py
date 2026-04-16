@@ -61,7 +61,7 @@ app.include_router(comments_router, prefix="/api")
 app.include_router(s3_router, prefix="/api")
 app.include_router(admin_router, prefix="/api")
 
-@app.get('/')
+@app.get('/api')
 async def root():
     return {'message': 'VibeStream API is running'}
 

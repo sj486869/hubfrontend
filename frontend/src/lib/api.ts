@@ -1,6 +1,10 @@
 import type { CategoryItem, CommentItem, UserProfile, VideoItem } from './types';
 
-const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000').replace(/\/$/, '');
+const IS_SERVER = typeof window === 'undefined';
+const API_BASE = (IS_SERVER 
+  ? (process.env.INTERNAL_API_URL || 'http://127.0.0.1:8000/api') 
+  : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000')
+).replace(/\/$/, '');
 
 type BackendComment = {
   id: string;

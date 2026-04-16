@@ -1,24 +1,37 @@
-# Node
+# Node.js
 node_modules/
+dist/
 .next/
-
-# Local env files
+out/
+build/
 .env.local
-.env
-.env.*.local
-
-# Logs
-*.log
-logs/
-next-dev.err.log
-next-dev.out.log
+.env.development.local
+.env.test.local
+.env.production.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
 # Python
+venv/
+.venv/
+env/
+.env
 __pycache__/
 *.py[cod]
 *$py.class
+.pytest_cache/
+.coverage
+htmlcov/
 
-# IDE
+# VibeStream Specific
+backend/uploads/
+backend/uvicorn.log
+backend/uvicorn-error.log
+frontend/next-dev.out.log
+frontend/next-dev.err.log
+
+# System
 .DS_Store
-.idea/
-.vscode/
+Thumbs.db
+.gemini/
