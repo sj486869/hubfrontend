@@ -65,7 +65,16 @@ def ensure_upload_instance(file_value, label: str) -> UploadFile:
 
 
 def validation_exception(exc: ValidationError) -> HTTPException:
-    return HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=exc.errors())
+    errors = exc.errors()
+    # Build a human-readable message from the first validation error
+    if errors:
+        first = errors[0]
+        field = ' → '.join(str(loc) for loc in first.get('loc', []))
+        msg = first.get('msg', 'Validation error')
+        detail = f'{field}: {msg}' if field else msg
+    else:
+        detail = 'Validation error'
+    return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=detail)
 
 
 async def create_stream_assets(video_url: str, request: Request) -> tuple[str, str]:
