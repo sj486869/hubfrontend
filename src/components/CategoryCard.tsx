@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import Image from 'next/image';
+import { PLACEHOLDER_IMAGE } from '../lib/constants';
 import type { CategoryItem } from '../lib/types';
 
 export default function CategoryCard({
@@ -10,7 +11,7 @@ export default function CategoryCard({
   thumbnails: string[];
 }) {
   // Try to grab exactly 4 images for the collage, fallback to placeholder if not enough
-  const collage = [...thumbnails, ...Array(4).fill('https://via.placeholder.com/300x200')].slice(0, 4);
+  const collage = [...thumbnails, ...Array(4).fill(PLACEHOLDER_IMAGE)].slice(0, 4);
 
   return (
     <Link

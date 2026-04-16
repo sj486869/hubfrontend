@@ -4,6 +4,8 @@ export type Category = {
   videoCount: number;
 };
 
+export const PLACEHOLDER_IMAGE = '/placeholder.svg';
+
 export const categories: Category[] = [
   { slug: 'desi-mms', name: 'Desi MMS', videoCount: 68 },
   { slug: 'desi-porn', name: 'Desi Porn', videoCount: 92 },

@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
+import { PLACEHOLDER_IMAGE } from '../lib/constants';
 import type { VideoItem } from '../lib/types';
 
 function formatViews(views: number) {
@@ -43,7 +44,7 @@ export default function RelatedVideos({ videos, mobile = false }: { videos: Vide
             >
               <div className="relative aspect-video w-32 shrink-0 overflow-hidden rounded-lg bg-[#0a0f1d] sm:w-36">
                 <Image
-                  src={video.thumbnail || 'https://via.placeholder.com/300x200'}
+                  src={video.thumbnail || PLACEHOLDER_IMAGE}
                   alt={video.title}
                   fill
                   sizes="144px"

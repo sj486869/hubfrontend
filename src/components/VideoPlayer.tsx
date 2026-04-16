@@ -114,6 +114,7 @@ export default function VideoPlayer({ video, token }: { video: VideoItem; token:
   const [showSettings, setShowSettings] = useState(false);
   const [hlsLevels, setHlsLevels] = useState<{height: number, bitrate: number}[]>([]);
   const [currentLevel, setCurrentLevel] = useState(-1);
+  const [playbackError, setPlaybackError] = useState<string | null>(null);
   const lastTapRef = useRef<{ time: number, x: number } | null>(null);
 
   const [playbackMode, setPlaybackMode] = useState<'stream' | 'file'>(
@@ -165,6 +166,13 @@ export default function VideoPlayer({ video, token }: { video: VideoItem; token:
         hls.on(Hls.Events.LEVEL_SWITCHED, (event, data) => {
           setCurrentLevel(data.level);
         });
+        hls.on(Hls.Events.ERROR, (event, data) => {
+          if (data.fatal) {
+            console.error('HLS Fatal Error:', data);
+            setPlaybackError('Your browser blocked the stream or the file is corrupted. Check if you need to allow "Insecure Content".');
+            setIsReady(true); // Stop spinner
+          }
+        });
 
         hls.loadSource(video.videoUrl);
         hls.attachMedia(el);
@@ -200,13 +208,22 @@ export default function VideoPlayer({ video, token }: { video: VideoItem; token:
       }
     };
 
-    const onMeta = () => { setIsReady(true); syncTime(); };
+    const onMeta = () => { setIsReady(true); syncTime(); setPlaybackError(null); };
     const onPlay = () => setIsPlaying(true);
     const onPause = () => setIsPlaying(false);
     const onVol = () => { setIsMuted(el.muted || el.volume === 0); setVolume(el.volume); };
     const onWait = () => setIsReady(false);
     const onCan = () => setIsReady(true);
     const onDur = () => setDuration(el.duration || 0);
+    const onErr = () => {
+      console.error('Video element error');
+      if (typeof window !== 'undefined' && window.location.protocol === 'https:' && video.videoUrl.startsWith('http:')) {
+        setPlaybackError('Security Block: Your browser is preventing this video from loading because it is not served over a secure connection (HTTPS). Please allow insecure content in your site settings.');
+      } else {
+        setPlaybackError('Failed to load video. This might be a network error or a missing file.');
+      }
+      setIsReady(true);
+    };
 
     el.addEventListener('loadedmetadata', onMeta);
     el.addEventListener('timeupdate', syncTime);
@@ -216,6 +233,7 @@ export default function VideoPlayer({ video, token }: { video: VideoItem; token:
     el.addEventListener('waiting', onWait);
     el.addEventListener('canplay', onCan);
     el.addEventListener('durationchange', onDur);
+    el.addEventListener('error', onErr);
     onVol();
 
     return () => {
@@ -227,6 +245,7 @@ export default function VideoPlayer({ video, token }: { video: VideoItem; token:
       el.removeEventListener('waiting', onWait);
       el.removeEventListener('canplay', onCan);
       el.removeEventListener('durationchange', onDur);
+      el.removeEventListener('error', onErr);
     };
   }, [isSeeking, video.videoUrl]);
 
@@ -468,10 +487,30 @@ export default function VideoPlayer({ video, token }: { video: VideoItem; token:
             {/* Gradient vignette bottom */}
             <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: 'linear-gradient(to top, rgba(0,0,0,.85) 0%, transparent 40%)' }} />
 
-            {/* Loading spinner */}
-            {!isReady && (
+            {/* Loading spinner or Error Message */}
+            {!isReady && !playbackError && (
               <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,.4)' }}>
                 <div className="vp-spinner" />
+              </div>
+            )}
+
+            {playbackError && (
+              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,.7)', padding: 40, textAlign: 'center' }}>
+                <div className="max-w-md space-y-4">
+                  <div className="mx-auto w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center border border-red-500/50">
+                    <svg viewBox="0 0 24 24" fill="currentColor" className="h-6 w-6 text-red-500"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+                  </div>
+                  <h3 className="text-lg font-bold text-white">Playback Error</h3>
+                  <p className="text-sm text-white/70 leading-relaxed">
+                    {playbackError}
+                  </p>
+                  <button 
+                    onClick={() => window.location.reload()}
+                    className="mt-4 px-6 py-2 rounded-full bg-white text-black text-xs font-bold uppercase tracking-widest hover:bg-white/90"
+                  >
+                    Reload Page
+                  </button>
+                </div>
               </div>
             )}
 

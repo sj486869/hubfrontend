@@ -85,18 +85,29 @@ async function request<T>(path: string, options: RequestInit = {}) {
     headers.set('Content-Type', 'application/json');
   }
 
-  const response = await fetch(`${API_BASE}${path}`, {
-    cache: 'no-store',
-    headers,
-    ...options,
-  });
+  try {
+    const response = await fetch(`${API_BASE}${path}`, {
+      cache: 'no-store',
+      headers,
+      ...options,
+    });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`${response.status} ${response.statusText}: ${errorText}`);
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`${response.status} ${response.statusText}: ${errorText}`);
+    }
+
+    return (await response.json()) as T;
+  } catch (err: any) {
+    if (err.name === 'TypeError' && err.message === 'Failed to fetch') {
+      // Check if this is a common SSL/Mixed Content issue
+      if (typeof window !== 'undefined' && window.location.protocol === 'https:' && API_BASE.startsWith('http:')) {
+        throw new Error('Connection Blocked: Your browser is blocking this request because the backend is not secure (HTTP). Please allow "Insecure Content" in your browser settings or use a secure backend.');
+      }
+      throw new Error('Backend Unreachable: The server might be down or your internet is disconnected.');
+    }
+    throw err;
   }
-
-  return (await response.json()) as T;
 }
 
 function uploadFormData<T>(

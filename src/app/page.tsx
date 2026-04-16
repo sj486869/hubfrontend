@@ -4,6 +4,7 @@ import Navbar from '../components/Navbar';
 import CategoryCard from '../components/CategoryCard';
 import GridLayout from '../components/GridLayout';
 import VideoGrid from '../components/VideoGrid';
+import { PLACEHOLDER_IMAGE } from '../lib/constants';
 import { fetchCategories, fetchVideos } from '../lib/api';
 
 export const dynamic = 'force-dynamic';
@@ -48,7 +49,7 @@ export default async function HomePage() {
                     video.category.toLowerCase().includes(category.slug.split('-')[0]),
                 )
                 .slice(0, 4)
-                .map((video) => video.thumbnail || 'https://via.placeholder.com/300x200');
+                .map((video) => video.thumbnail || PLACEHOLDER_IMAGE);
               return <CategoryCard key={category.slug} category={category} thumbnails={thumbnails} />;
             })}
           </GridLayout>

@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import Image from 'next/image';
+import { PLACEHOLDER_IMAGE } from '../lib/constants';
 import type { VideoItem } from '../lib/types';
 
 function formatViews(views: number) {
@@ -34,7 +35,7 @@ export default function VideoCard({ video }: { video: VideoItem }) {
       <Link href={`/video/${video.id}`} className="block">
         <div className="relative aspect-video overflow-hidden">
           <Image
-            src={video.thumbnail || 'https://via.placeholder.com/300x200'}
+            src={video.thumbnail || PLACEHOLDER_IMAGE}
             alt={video.title}
             fill
             sizes="(min-width: 1536px) 18vw, (min-width: 1024px) 26vw, (min-width: 640px) 45vw, 100vw"

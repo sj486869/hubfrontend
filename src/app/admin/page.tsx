@@ -520,7 +520,7 @@ export default function AdminPage() {
                     className="text-sm text-text"
                   />
                 </label>
-                <button type="submit" disabled={activeJob !== null} className="rounded-full bg-accent px-6 py-3 text-sm font-semibold text-white transition hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-70">
+                <button type="submit" disabled={activeJob !== null} className="rounded-full bg-[#114a70] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#1a5b87] disabled:cursor-not-allowed disabled:opacity-70">
                   {activeJob === 'category' ? 'Saving...' : (selectedCategorySlug ? 'Save changes' : 'Create category')}
                 </button>
               </form>
@@ -644,7 +644,7 @@ export default function AdminPage() {
                   <span className="mb-2 block">Thumbnail file</span>
                   <input type="file" accept="image/jpeg,image/png" onChange={(event) => setThumbnailFile(event.target.files?.[0] || null)} className="text-sm text-text" />
                 </label>
-                <button type="submit" disabled={activeJob !== null} className="rounded-full bg-accent px-6 py-3 text-sm font-semibold text-white transition hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-70">
+                <button type="submit" disabled={activeJob !== null} className="rounded-full bg-[#114a70] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#1a5b87] disabled:cursor-not-allowed disabled:opacity-70">
                   {activeJob === 'upload' ? 'Uploading...' : 'Upload video'}
                 </button>
               </form>
@@ -744,7 +744,7 @@ export default function AdminPage() {
                   <span className="mb-2 block">Replace thumbnail file</span>
                   <input type="file" accept="image/jpeg,image/png" onChange={(event) => setUpdateThumbnailFile(event.target.files?.[0] || null)} className="text-sm text-text" />
                 </label>
-                  <button type="submit" disabled={activeJob !== null} className="rounded-full bg-accent px-6 py-3 text-sm font-semibold text-white transition hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-70">
+                  <button type="submit" disabled={activeJob !== null} className="rounded-full bg-[#114a70] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#1a5b87] disabled:cursor-not-allowed disabled:opacity-70">
                     {activeJob === 'update' ? 'Saving...' : 'Save changes'}
                   </button>
                 </form>
