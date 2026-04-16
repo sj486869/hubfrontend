@@ -1,0 +1,43 @@
+const nextConfig = {
+  reactStrictMode: true,
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'http',
+        hostname: 'localhost',
+        port: '8000',
+        pathname: '/media/**',
+      },
+      {
+        protocol: 'http',
+        hostname: '127.0.0.1',
+        port: '8000',
+        pathname: '/media/**',
+      },
+      {
+        protocol: 'http',
+        hostname: '**',
+        port: '8000',
+        pathname: '/media/**',
+      },
+      {
+        protocol: 'http',
+        hostname: 'localhost',
+        port: '8001',
+        pathname: '/media/**',
+      },
+      {
+        protocol: 'http',
+        hostname: '127.0.0.1',
+        port: '8001',
+        pathname: '/media/**',
+      },
+      {
+        protocol: 'https',
+        hostname: '**',
+      },
+    ],
+  },
+};
+
+export default nextConfig;
