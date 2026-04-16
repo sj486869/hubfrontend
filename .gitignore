@@ -1,0 +1,24 @@
+# Node
+node_modules/
+.next/
+
+# Local env files
+.env.local
+.env
+.env.*.local
+
+# Logs
+*.log
+logs/
+next-dev.err.log
+next-dev.out.log
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# IDE
+.DS_Store
+.idea/
+.vscode/
