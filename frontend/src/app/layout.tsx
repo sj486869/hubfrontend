@@ -15,6 +15,9 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: 'VibeStream',
   description: 'Dark modern video streaming platform',
+  other: {
+    '46e0465d4dbde309b0c53d9c02381e5af1b8aac1': '46e0465d4dbde309b0c53d9c02381e5af1b8aac1',
+  },
 };
 
 export const viewport: Viewport = {

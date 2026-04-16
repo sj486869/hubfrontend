@@ -369,6 +369,19 @@ export default function AdminPage() {
     if (!token) return;
 
     try {
+      const trimmedTitle = title.trim();
+      const trimmedDescription = description.trim();
+
+      if (trimmedTitle.length < 2) {
+        throw new Error('Title must be at least 2 characters.');
+      }
+      if (trimmedDescription.length < 2) {
+        throw new Error('Description must be at least 2 characters.');
+      }
+      if (!category) {
+        throw new Error('Please select a category.');
+      }
+
       const selectedVideoFile = videoFile;
       const selectedThumbnailFile = thumbnailFile;
       ensureVideoFile(selectedVideoFile);
@@ -382,8 +395,8 @@ export default function AdminPage() {
       setUploadProgress(4);
       setStatus('Uploading video to backend...');
       const formData = new FormData();
-      formData.append('title', title.trim());
-      formData.append('description', description.trim());
+      formData.append('title', trimmedTitle);
+      formData.append('description', trimmedDescription);
       formData.append('category', category);
       formData.append('tags', tags);
       formData.append('video_file', selectedVideoFile);
@@ -609,12 +622,12 @@ export default function AdminPage() {
               <h2 className="text-2xl font-semibold text-white">Upload new video</h2>
               <form onSubmit={handleUploadVideo} className="mt-6 space-y-4">
                 <label className="block text-sm text-muted">
-                  <span className="mb-2 block">Title</span>
-                  <input value={title} onChange={(event) => setTitle(event.target.value)} required className="w-full rounded-3xl border border-white/10 bg-black/60 px-4 py-3 text-sm text-text outline-none focus:border-accent focus:ring-2 focus:ring-accent/30" />
+                  <span className="mb-2 block">Title <span className="text-red-400">*</span></span>
+                  <input value={title} onChange={(event) => setTitle(event.target.value)} required minLength={2} maxLength={200} placeholder="At least 2 characters" className="w-full rounded-3xl border border-white/10 bg-black/60 px-4 py-3 text-sm text-text outline-none focus:border-accent focus:ring-2 focus:ring-accent/30" />
                 </label>
                 <label className="block text-sm text-muted">
-                  <span className="mb-2 block">Description</span>
-                  <textarea value={description} onChange={(event) => setDescription(event.target.value)} rows={3} required className="w-full rounded-3xl border border-white/10 bg-black/60 px-4 py-3 text-sm text-text outline-none focus:border-accent focus:ring-2 focus:ring-accent/30" />
+                  <span className="mb-2 block">Description <span className="text-red-400">*</span></span>
+                  <textarea value={description} onChange={(event) => setDescription(event.target.value)} rows={3} required minLength={2} maxLength={4000} placeholder="At least 2 characters" className="w-full rounded-3xl border border-white/10 bg-black/60 px-4 py-3 text-sm text-text outline-none focus:border-accent focus:ring-2 focus:ring-accent/30" />
                 </label>
                 <label className="block text-sm text-muted">
                   <span className="mb-2 block">Category</span>

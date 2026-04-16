@@ -1,10 +1,31 @@
 import type { CategoryItem, CommentItem, UserProfile, VideoItem } from './types';
 
 const IS_SERVER = typeof window === 'undefined';
-const API_BASE = (IS_SERVER 
-  ? (process.env.INTERNAL_API_URL || 'http://127.0.0.1:8000/api') 
+const API_BASE = (IS_SERVER
+  ? (process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api')
   : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000')
 ).replace(/\/$/, '');
+
+/**
+ * Rewrites an HTTP media/stream URL to go through the Next.js /api/proxy
+ * route when the browser page is on HTTPS. This prevents Mixed Content blocks
+ * caused by the frontend being on HTTPS while the EC2 backend is plain HTTP.
+ *
+ * - On the server side (SSR) or when both are already HTTPS, returns url as-is.
+ * - On the client side under HTTPS, rewrites http:// backend URLs to proxy.
+ */
+export function proxyUrl(url: string): string {
+  if (!url) return url;
+  // Only rewrite if we're in the browser on HTTPS and the asset is HTTP
+  if (
+    typeof window !== 'undefined' &&
+    window.location.protocol === 'https:' &&
+    url.startsWith('http:')
+  ) {
+    return `/api/proxy?url=${encodeURIComponent(url)}`;
+  }
+  return url;
+}
 
 type BackendComment = {
   id: string;

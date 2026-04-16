@@ -3,7 +3,7 @@
 import Hls from 'hls.js';
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import type { VideoItem } from '../lib/types';
-import { toggleLike, trackWatchHistory } from '../lib/api';
+import { toggleLike, trackWatchHistory, proxyUrl } from '../lib/api';
 
 /* ─────────────────────────── helpers ─────────────────────────── */
 
@@ -117,6 +117,9 @@ export default function VideoPlayer({ video, token }: { video: VideoItem; token:
   const [playbackError, setPlaybackError] = useState<string | null>(null);
   const lastTapRef = useRef<{ time: number, x: number } | null>(null);
 
+  const safeVideoUrl = proxyUrl(video.videoUrl);
+  const safeThumbnail = proxyUrl(video.thumbnail);
+
   const [playbackMode, setPlaybackMode] = useState<'stream' | 'file'>(
     isHlsSource(video.videoUrl) ? 'stream' : 'file',
   );
@@ -156,7 +159,22 @@ export default function VideoPlayer({ video, token }: { video: VideoItem; token:
 
     if (isHlsSource(video.videoUrl)) {
       if (Hls.isSupported()) {
-        const hls = new Hls({ enableWorker: true, maxBufferLength: 90, backBufferLength: 90 });
+        const hls = new Hls({
+          enableWorker: true,
+          maxBufferLength: 90,
+          backBufferLength: 90,
+          // Custom loader is not needed — proxyUrl already rewrites the manifest
+          // URL, and hls.js will resolve segment URLs relative to the manifest.
+          // However, segment URLs inside .m3u8 are absolute http:// paths, so
+          // we intercept them via xhrSetup.
+          xhrSetup: (xhr: XMLHttpRequest, url: string) => {
+            // Rewrite any http:// segment/key URL to go through the proxy
+            const rewritten = proxyUrl(url);
+            if (rewritten !== url) {
+              xhr.open('GET', rewritten, true);
+            }
+          },
+        });
         hlsRef.current = hls;
         
         hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
@@ -169,29 +187,30 @@ export default function VideoPlayer({ video, token }: { video: VideoItem; token:
         hls.on(Hls.Events.ERROR, (event, data) => {
           if (data.fatal) {
             console.error('HLS Fatal Error:', data);
-            setPlaybackError('Your browser blocked the stream or the file is corrupted. Check if you need to allow "Insecure Content".');
-            setIsReady(true); // Stop spinner
+            setPlaybackError('Playback failed. The stream could not be loaded. Please try refreshing the page.');
+            setIsReady(true);
           }
         });
 
-        hls.loadSource(video.videoUrl);
+        hls.loadSource(safeVideoUrl);
         hls.attachMedia(el);
         setPlaybackMode('stream');
       } else if (el.canPlayType('application/vnd.apple.mpegurl')) {
-        el.src = video.videoUrl;
+        // Safari native HLS — it fetches segments natively; use proxy URL for manifest
+        el.src = safeVideoUrl;
         setPlaybackMode('stream');
       } else {
-        el.src = video.videoUrl;
+        el.src = safeVideoUrl;
         setPlaybackMode('file');
       }
     } else {
-      el.src = video.videoUrl;
+      el.src = safeVideoUrl;
       setPlaybackMode('file');
     }
 
     el.load();
     return () => { if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; } };
-  }, [video.videoUrl]);
+  }, [video.videoUrl, safeVideoUrl]);
 
   /* ── video events ── */
   useEffect(() => {
@@ -488,7 +507,7 @@ export default function VideoPlayer({ video, token }: { video: VideoItem; token:
             <video
               ref={videoRef}
               style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block', background: '#000', cursor: showControls ? 'default' : 'none' }}
-              poster={video.thumbnail}
+              poster={safeThumbnail}
               preload="metadata"
               playsInline
               onClick={togglePlayback}
