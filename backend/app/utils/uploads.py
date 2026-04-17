@@ -38,6 +38,14 @@ def get_media_base_url(request: Request) -> str:
     env_base = os.getenv('EXTERNAL_BASE_URL')
     if env_base:
         return env_base.rstrip('/')
+
+    # Try to detect from proxy headers first
+    forwarded_host = request.headers.get('x-forwarded-host')
+    forwarded_proto = request.headers.get('x-forwarded-proto', 'http')
+    
+    if forwarded_host:
+        return f"{forwarded_proto}://{forwarded_host}"
+    
     return str(request.base_url).rstrip('/')
 
 

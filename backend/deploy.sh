@@ -8,13 +8,12 @@ sudo apt-get update
 sudo apt-get install -y python3-pip python3-venv nginx git
 
 # 2. Setup Directory
-PROJECT_DIR="/home/ubuntu/hubbackend"
-if [ ! -d "$PROJECT_DIR" ]; then
-    echo "Please clone the repository into /home/ubuntu/hubbackend first!"
-    exit 1
-fi
+# Auto-detect the backend directory where this script is located
+BACKEND_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+PROJECT_DIR="$BACKEND_DIR"
 
-cd $PROJECT_DIR
+echo "📂 Deploying from: $PROJECT_DIR"
+cd "$PROJECT_DIR"
 
 # 3. Virtual Environment
 python3 -m venv venv

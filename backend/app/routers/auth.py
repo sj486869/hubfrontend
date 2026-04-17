@@ -35,8 +35,8 @@ async def signup(data: UserCreate, response: Response):
     access_token = create_access_token(user_id)
     refresh_token = create_refresh_token(user_id)
     
-    response.set_cookie(key="access_token", value=access_token, httponly=True, samesite="lax", max_age=3600*24*7)
-    response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, samesite="lax", max_age=3600*24*30)
+    response.set_cookie(key="access_token", value=access_token, httponly=True, samesite="lax", secure=True, path="/", max_age=3600*24*7)
+    response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, samesite="lax", secure=True, path="/", max_age=3600*24*30)
     
     return Token(access_token=access_token, refresh_token=refresh_token, role='user')
 
@@ -50,8 +50,8 @@ async def login(data: UserLogin, response: Response):
     access_token = create_access_token(user_id)
     refresh_token = create_refresh_token(user_id)
     
-    response.set_cookie(key="access_token", value=access_token, httponly=True, samesite="lax", max_age=3600*24*7)
-    response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, samesite="lax", max_age=3600*24*30)
+    response.set_cookie(key="access_token", value=access_token, httponly=True, samesite="lax", secure=True, path="/", max_age=3600*24*7)
+    response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, samesite="lax", secure=True, path="/", max_age=3600*24*30)
     
     return Token(
         access_token=access_token,
@@ -85,8 +85,8 @@ async def refresh(request: Request, response: Response, data: RefreshTokenReques
     access_token = create_access_token(user_id)
     refresh_token = create_refresh_token(user_id)
     
-    response.set_cookie(key="access_token", value=access_token, httponly=True, samesite="lax", max_age=3600*24*7)
-    response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, samesite="lax", max_age=3600*24*30)
+    response.set_cookie(key="access_token", value=access_token, httponly=True, samesite="lax", secure=True, path="/", max_age=3600*24*7)
+    response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, samesite="lax", secure=True, path="/", max_age=3600*24*30)
     
     return Token(
         access_token=access_token,
@@ -96,8 +96,8 @@ async def refresh(request: Request, response: Response, data: RefreshTokenReques
 
 @router.post('/logout')
 async def logout(response: Response):
-    response.delete_cookie(key="access_token", samesite="lax", path='/')
-    response.delete_cookie(key="refresh_token", samesite="lax", path='/')
+    response.delete_cookie(key="access_token", samesite="lax", secure=True, path='/')
+    response.delete_cookie(key="refresh_token", samesite="lax", secure=True, path='/')
     return {"message": "Logged out successfully"}
 
 @router.get('/me', response_model=UserOut)

@@ -379,7 +379,7 @@ export default function AdminPage() {
         throw new Error('Description must be at least 2 characters.');
       }
       if (!category) {
-        throw new Error('Please select a category.');
+        throw new Error('Please select a category before uploading.');
       }
 
       const selectedVideoFile = videoFile;
@@ -393,7 +393,7 @@ export default function AdminPage() {
 
       setActiveJob('upload');
       setUploadProgress(4);
-      setStatus('Uploading video to backend...');
+      setStatus('Uploading raw files to VibeStream servers...');
       const formData = new FormData();
       formData.append('title', trimmedTitle);
       formData.append('description', trimmedDescription);
@@ -404,6 +404,9 @@ export default function AdminPage() {
 
       await adminUploadVideoWithProgress(token, formData, (progress) => {
         setUploadProgress(Math.max(progress, 4));
+        if (progress >= 100) {
+          setStatus('Publishing to library & generating stream segments...');
+        }
       });
 
       setTitle('');
@@ -413,7 +416,7 @@ export default function AdminPage() {
       setThumbnailFile(null);
       await refreshAdminData();
       setUploadProgress(100);
-      setStatus('Video uploaded successfully.');
+      setStatus('Success! Video is now live in the library.');
     } catch (error) {
       console.error(error);
       setStatus(error instanceof Error ? error.message : 'Upload failed.');

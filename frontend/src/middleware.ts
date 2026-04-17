@@ -2,12 +2,12 @@ import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 
 export function middleware(request: NextRequest) {
-  const accessToken = request.cookies.get('access_token')?.value;
+  const isLoggedIn = request.cookies.get('auth_present')?.value === 'true';
   const role = request.cookies.get('user_role')?.value;
   const { pathname } = request.nextUrl;
 
   if (pathname.startsWith('/admin') || pathname.startsWith('/upload')) {
-    if (!accessToken) {
+    if (!isLoggedIn) {
       return NextResponse.redirect(new URL('/auth', request.url));
     }
 

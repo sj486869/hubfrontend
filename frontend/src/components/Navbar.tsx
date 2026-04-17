@@ -75,6 +75,9 @@ function NavbarInner() {
           
           {role ? (
             <div className="flex items-center gap-4 border-l border-white/10 pl-4">
+              {role === 'admin' && (
+                <Link href="/admin" className={navLinkStyle('/admin')}>Admin</Link>
+              )}
               <Link href="/profile" className={navLinkStyle('/profile')}>Profile</Link>
               <button onClick={() => { logoutUser().finally(() => { clearAuthSession(); setRole(null); router.push('/'); }); }} className="text-sm font-medium text-gray-300 transition hover:text-white">
                 Log out
@@ -131,6 +134,9 @@ function NavbarInner() {
             
             {role ? (
               <>
+                {role === 'admin' && (
+                  <Link href="/admin" className={mobileNavLinkStyle('/admin')}>Admin</Link>
+                )}
                 <Link href="/profile" className={mobileNavLinkStyle('/profile')}>Profile</Link>
                 <button 
                   onClick={() => { logoutUser().finally(() => { clearAuthSession(); setRole(null); router.push('/'); }); }} 

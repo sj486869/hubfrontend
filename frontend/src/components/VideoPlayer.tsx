@@ -111,6 +111,9 @@ export default function VideoPlayer({ video, token }: { video: VideoItem; token:
   const [playbackError, setPlaybackError] = useState<string | null>(null);
   const lastTapRef = useRef<{ time: number, x: number } | null>(null);
 
+  const [isRescued, setIsRescued] = useState(false);
+  useEffect(() => { setIsRescued(false); }, [video.videoUrl]);
+
   const safeVideoUrl = video.videoUrl;
   const safeThumbnail = video.thumbnail;
 
@@ -174,10 +177,26 @@ export default function VideoPlayer({ video, token }: { video: VideoItem; token:
     const onWait = () => setIsReady(false);
     const onCan = () => setIsReady(true);
     const onDur = () => setDuration(el.duration || 0);
+
     const onErr = () => {
       console.error('Video element error');
+      
+      const el = videoRef.current;
+      if (el && !isRescued && video.videoUrl.startsWith('http')) {
+        setIsRescued(true);
+        const apiPath = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api').replace(/\/$/, '');
+        const rescueUrl = `${apiPath}/proxy?url=${encodeURIComponent(video.videoUrl)}`;
+        
+        console.log('Attempting auto-rescue via proxy:', rescueUrl);
+        showToast('Rescuing media stream...');
+        
+        el.src = rescueUrl;
+        el.load();
+        return;
+      }
+
       if (typeof window !== 'undefined' && window.location.protocol === 'https:' && video.videoUrl.startsWith('http:')) {
-        setPlaybackError('Security Block: Your browser is preventing this video from loading because it is not served over a secure connection (HTTPS). Please allow insecure content in your site settings.');
+        setPlaybackError('Security Block: Your browser is preventing this video from loading because it is not served over a secure connection (HTTPS).');
       } else {
         setPlaybackError('Failed to load video. This might be a network error or a missing file.');
       }

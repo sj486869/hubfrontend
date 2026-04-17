@@ -3,7 +3,7 @@ import type { CategoryItem, CommentItem, UserProfile, VideoItem } from './types'
 const IS_SERVER = typeof window === 'undefined';
 const API_BASE = (IS_SERVER
   ? (process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api')
-  : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000')
+  : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api')
 ).replace(/\/$/, '');
 
 /**
@@ -111,6 +111,15 @@ async function request<T>(path: string, options: RequestInit = {}) {
 
     if (!response.ok) {
       const errorText = await response.text();
+      
+      // Auto-logout on 401 Unauthorized if not on the login page itself
+      if (response.status === 401 && !path.includes('/auth/login') && typeof window !== 'undefined' && !window.location.pathname.startsWith('/auth')) {
+        const { clearAuthSession } = await import('./session');
+        clearAuthSession();
+        window.location.href = '/auth?expired=true';
+        return null as any;
+      }
+      
       throw new Error(`${response.status} ${response.statusText}: ${errorText}`);
     }
 

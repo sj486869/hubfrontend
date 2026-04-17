@@ -1,5 +1,6 @@
 import os
 import mimetypes
+import httpx
 from fastapi import FastAPI, HTTPException, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
@@ -65,6 +66,40 @@ app.include_router(admin_router, prefix="/api")
 @app.get('/api')
 async def root():
     return {'message': 'VibeStream API is running'}
+
+
+@app.get('/api/proxy')
+async def proxy_stream(url: str, request: Request):
+    """
+    Emergency proxy to rescue failed media loads or fix mixed-content/CORS issues.
+    """
+    async def stream_response():
+        async with httpx.AsyncClient(follow_redirects=True) as client:
+            try:
+                # Mirror the original request's range header if available
+                headers = {}
+                if 'range' in request.headers:
+                    headers['range'] = request.headers['range']
+                
+                async with client.stream('GET', url, headers=headers) as resp:
+                    # Stream the response chunks back to the client
+                    async for chunk in resp.aiter_bytes():
+                        yield chunk
+            except Exception as e:
+                yield f"Proxy Error: {str(e)}".encode()
+
+    # Determine media type if possible
+    media_type = mimetypes.guess_type(url)[0] or 'application/octet-stream'
+    
+    return StreamingResponse(
+        stream_response(),
+        media_type=media_type,
+        headers={
+            'Access-Control-Allow-Origin': '*',
+            'Cache-Control': 'no-cache',
+            'X-Proxy-Target': url
+        }
+    )
 
 
 def _iter_file_range(file_path, start: int, end: int, chunk_size: int = 1024 * 1024):
