@@ -18,6 +18,12 @@ export default function AuthPage() {
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     try {
+      if (!email.trim() || !password.trim()) {
+        setIsError(true);
+        setStatus('Please fill in all required fields.');
+        return;
+      }
+
       setIsSubmitting(true);
       setIsError(false);
       setStatus(mode === 'login' ? 'Signing you in...' : 'Creating your account...');

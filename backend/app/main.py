@@ -4,6 +4,16 @@ import httpx
 from fastapi import FastAPI, HTTPException, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
+try:
+    from starlette.middleware.proxy_headers import ProxyHeadersMiddleware
+except ImportError:
+    try:
+        from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
+    except ImportError:
+        # Fallback to no-op if not available
+        class ProxyHeadersMiddleware:
+            def __init__(self, app, **kwargs): self.app = app
+            async def __call__(self, scope, receive, send): await self.app(scope, receive, send)
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
@@ -24,11 +34,16 @@ from .routers.admin import router as admin_router
 from .utils.uploads import PUBLIC_UPLOAD_PREFIX, UPLOAD_ROOT, ensure_upload_dirs, resolve_upload_path
 
 app = FastAPI(title='VibeStream API', version='1.0.0')
+
+# Trust proxy headers (e.g., from Nginx)
+app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
+
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 origins = sorted({
     os.getenv('FRONTEND_URL', 'http://localhost:3000'),
     os.getenv('FRONTEND_URL_PROD', 'https://shopwithsuman.in'),
+    os.getenv('FRONTEND_URL_IP', 'http://3.6.44.45:3000'),
     'https://shopwithsuman.in',
     'https://www.shopwithsuman.in',
     'http://localhost:3000',
@@ -44,7 +59,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     # Allow localhost, 127.0.0.1, shopwithsuman.in (and www subdomain), and any LAN IP
-    allow_origin_regex=r'https?://(localhost|127\.0\.0\.1|((www|api)\.)?shopwithsuman\.in|10\.\d+\.\d+\.\d+|172\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+)(:\d+)?$',
+    allow_origin_regex=r'https?://(localhost|127\.0\.0\.1|((www|api)\.)?shopwithsuman\.in|3\.6\.44\.45|10\.\d+\.\d+\.\d+|172\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+)(:\d+)?$',
     allow_credentials=True,
     allow_methods=['*'],
     allow_headers=['*'],
@@ -179,11 +194,33 @@ async def serve_media(file_path: str, request: Request):
 @app.on_event('startup')
 async def startup_event():
     from .database import db
-    await db.users.create_index('email', unique=True)
-    await db.categories.create_index('slug', unique=True)
-    await db.videos.create_index('category')
-    await db.videos.create_index('title')
-    await db.comments.create_index('video_id')
+    import asyncio
+    
+    max_retries = 3
+    retry_delay = 2 # seconds
+    
+    for attempt in range(max_retries):
+        try:
+            print(f"📡 Connecting to MongoDB (Attempt {attempt + 1}/{max_retries})...")
+            # The client doesn't connect until first command, so let's try to ping or create index
+            await db.users.create_index('email', unique=True)
+            await db.categories.create_index('slug', unique=True)
+            await db.videos.create_index('category')
+            await db.videos.create_index('title')
+            await db.comments.create_index('video_id')
+            print("✅ MongoDB indexes verified/created.")
+            break
+        except Exception as e:
+            if attempt < max_retries - 1:
+                print(f"⚠️ MongoDB not ready yet: {str(e)}. Retrying in {retry_delay}s...")
+                await asyncio.sleep(retry_delay)
+            else:
+                print("❌ FATAL: Could not connect to MongoDB after several attempts.")
+                print("   Check if MongoDB is running: 'sudo systemctl status mongod'")
+                print("   Check logs for errors: 'sudo tail -n 20 /var/log/mongodb/mongod.log'")
+                # We don't raise here to allow the app to potentially start, 
+                # but most routes will fail. For startup, usually we want to crash if vital.
+                raise e
 
     admin_email = os.getenv('ADMIN_EMAIL')
     admin_password = os.getenv('ADMIN_PASSWORD')

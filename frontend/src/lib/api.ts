@@ -111,7 +111,26 @@ async function request<T>(path: string, options: RequestInit = {}) {
 
     if (!response.ok) {
       const errorText = await response.text();
-      
+      let errorMessage = `${response.status} ${response.statusText}`;
+
+      try {
+        const errorJson = JSON.parse(errorText);
+        // Handle FastAPI/Pydantic validation errors (422)
+        if (response.status === 422 && Array.isArray(errorJson.detail)) {
+          const firstError = errorJson.detail[0];
+          errorMessage = firstError.msg || 'Invalid input provided.';
+        } else if (typeof errorJson.detail === 'string') {
+          errorMessage = errorJson.detail;
+        } else if (errorJson.message) {
+          errorMessage = errorJson.message;
+        }
+      } catch (e) {
+        // Fallback to status text if body isn't JSON
+        if (errorText.length > 0 && errorText.length < 100) {
+          errorMessage += `: ${errorText}`;
+        }
+      }
+
       // Auto-logout on 401 Unauthorized if not on the login page itself
       if (response.status === 401 && !path.includes('/auth/login') && typeof window !== 'undefined' && !window.location.pathname.startsWith('/auth')) {
         const { clearAuthSession } = await import('./session');
@@ -120,7 +139,7 @@ async function request<T>(path: string, options: RequestInit = {}) {
         return null as any;
       }
       
-      throw new Error(`${response.status} ${response.statusText}: ${errorText}`);
+      throw new Error(errorMessage);
     }
 
     return (await response.json()) as T;
