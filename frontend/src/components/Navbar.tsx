@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense, FormEvent } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { clearAuthSession, getStoredRole } from '../lib/session';
+import { logoutUser } from '../lib/api';
 
 function NavbarInner() {
   const [query, setQuery] = useState('');
@@ -50,7 +51,7 @@ function NavbarInner() {
         
         {/* Left: Logo */}
         <Link href="/" className="text-xl font-bold tracking-tight text-white hover:opacity-90">
-          MyStream
+          VibeStream
         </Link>
 
         {/* Center: Desktop Search */}
@@ -75,7 +76,7 @@ function NavbarInner() {
           {role ? (
             <div className="flex items-center gap-4 border-l border-white/10 pl-4">
               <Link href="/profile" className={navLinkStyle('/profile')}>Profile</Link>
-              <button onClick={() => { clearAuthSession(); setRole(null); router.push('/'); }} className="text-sm font-medium text-gray-300 transition hover:text-white">
+              <button onClick={() => { logoutUser().finally(() => { clearAuthSession(); setRole(null); router.push('/'); }); }} className="text-sm font-medium text-gray-300 transition hover:text-white">
                 Log out
               </button>
             </div>
@@ -132,7 +133,7 @@ function NavbarInner() {
               <>
                 <Link href="/profile" className={mobileNavLinkStyle('/profile')}>Profile</Link>
                 <button 
-                  onClick={() => { clearAuthSession(); setRole(null); router.push('/'); }} 
+                  onClick={() => { logoutUser().finally(() => { clearAuthSession(); setRole(null); router.push('/'); }); }} 
                   className="block w-full text-left px-4 py-3 text-base font-medium text-gray-300 transition hover:bg-white/10 hover:text-white"
                 >
                   Log out

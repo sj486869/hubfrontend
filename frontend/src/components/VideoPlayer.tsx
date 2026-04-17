@@ -1,9 +1,8 @@
 'use client';
 
-import Hls from 'hls.js';
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import type { VideoItem } from '../lib/types';
-import { toggleLike, trackWatchHistory, proxyUrl } from '../lib/api';
+import { toggleLike, trackWatchHistory } from '../lib/api';
 
 /* ─────────────────────────── helpers ─────────────────────────── */
 
@@ -32,9 +31,7 @@ function formatClock(seconds: number) {
   return `${minutes}:${String(secs).padStart(2, '0')}`;
 }
 
-function isHlsSource(url: string) {
-  return url.toLowerCase().includes('.m3u8');
-}
+
 
 /* ─────────────────────────── toast ───────────────────────────── */
 
@@ -93,7 +90,6 @@ const SettingsIcon = () => (
 
 export default function VideoPlayer({ video, token }: { video: VideoItem; token: string | null }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const hlsRef = useRef<Hls | null>(null);
   const progressRef = useRef<HTMLDivElement>(null);
 
   const [likes, setLikes] = useState(video.likes);
@@ -112,17 +108,13 @@ export default function VideoPlayer({ video, token }: { video: VideoItem; token:
   const [volume, setVolume] = useState(1);
   const [playbackRate, setPlaybackRate] = useState(1);
   const [showSettings, setShowSettings] = useState(false);
-  const [hlsLevels, setHlsLevels] = useState<{height: number, bitrate: number}[]>([]);
-  const [currentLevel, setCurrentLevel] = useState(-1);
   const [playbackError, setPlaybackError] = useState<string | null>(null);
   const lastTapRef = useRef<{ time: number, x: number } | null>(null);
 
-  const safeVideoUrl = proxyUrl(video.videoUrl);
-  const safeThumbnail = proxyUrl(video.thumbnail);
+  const safeVideoUrl = video.videoUrl;
+  const safeThumbnail = video.thumbnail;
 
-  const [playbackMode, setPlaybackMode] = useState<'stream' | 'file'>(
-    isHlsSource(video.videoUrl) ? 'stream' : 'file',
-  );
+  const [playbackMode, setPlaybackMode] = useState<'file'>('file');
 
   const { toast, show: showToast } = useToast();
   const hideControlsTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -145,7 +137,7 @@ export default function VideoPlayer({ video, token }: { video: VideoItem; token:
     };
   }, []);
 
-  /* ── HLS setup ── */
+  /* ── setup ── */
   useEffect(() => {
     const el = videoRef.current;
     if (!el) return;
@@ -155,62 +147,10 @@ export default function VideoPlayer({ video, token }: { video: VideoItem; token:
     setDuration(0);
     setProgressValue(0);
 
-    if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
-
-    if (isHlsSource(video.videoUrl)) {
-      if (Hls.isSupported()) {
-        const hls = new Hls({
-          enableWorker: true,
-          maxBufferLength: 90,
-          backBufferLength: 90,
-          // Custom loader is not needed — proxyUrl already rewrites the manifest
-          // URL, and hls.js will resolve segment URLs relative to the manifest.
-          // However, segment URLs inside .m3u8 are absolute http:// paths, so
-          // we intercept them via xhrSetup.
-          xhrSetup: (xhr: XMLHttpRequest, url: string) => {
-            // Rewrite any http:// segment/key URL to go through the proxy
-            const rewritten = proxyUrl(url);
-            if (rewritten !== url) {
-              xhr.open('GET', rewritten, true);
-            }
-          },
-        });
-        hlsRef.current = hls;
-        
-        hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
-          setHlsLevels(data.levels);
-          setCurrentLevel(hls.currentLevel);
-        });
-        hls.on(Hls.Events.LEVEL_SWITCHED, (event, data) => {
-          setCurrentLevel(data.level);
-        });
-        hls.on(Hls.Events.ERROR, (event, data) => {
-          if (data.fatal) {
-            console.error('HLS Fatal Error:', data);
-            setPlaybackError('Playback failed. The stream could not be loaded. Please try refreshing the page.');
-            setIsReady(true);
-          }
-        });
-
-        hls.loadSource(safeVideoUrl);
-        hls.attachMedia(el);
-        setPlaybackMode('stream');
-      } else if (el.canPlayType('application/vnd.apple.mpegurl')) {
-        // Safari native HLS — it fetches segments natively; use proxy URL for manifest
-        el.src = safeVideoUrl;
-        setPlaybackMode('stream');
-      } else {
-        el.src = safeVideoUrl;
-        setPlaybackMode('file');
-      }
-    } else {
-      el.src = safeVideoUrl;
-      setPlaybackMode('file');
-    }
-
+    el.src = safeVideoUrl;
+    setPlaybackMode('file');
     el.load();
-    return () => { if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; } };
-  }, [video.videoUrl, safeVideoUrl]);
+  }, [safeVideoUrl]);
 
   /* ── video events ── */
   useEffect(() => {
@@ -290,15 +230,6 @@ export default function VideoPlayer({ video, token }: { video: VideoItem; token:
     const el = videoRef.current;
     if (el) el.playbackRate = rate;
     setPlaybackRate(rate);
-    setShowSettings(false);
-    resetHideTimer();
-  };
-
-  const setQuality = (levelIndex: number) => {
-    if (hlsRef.current) {
-      hlsRef.current.currentLevel = levelIndex;
-      setCurrentLevel(levelIndex);
-    }
     setShowSettings(false);
     resetHideTimer();
   };
@@ -406,89 +337,73 @@ export default function VideoPlayer({ video, token }: { video: VideoItem; token:
     views: formatViews(video.views),
     date: formatPublishedDate(video.createdAt),
     duration: video.duration,
-    mode: playbackMode === 'stream' ? 'HLS' : 'MP4',
-  }), [video, playbackMode]);
+    mode: 'MP4',
+  }), [video]);
 
   /* ═══════════════════════════ render ═════════════════════════ */
 
   return (
     <>
       {/* ── Global styles injected once ── */}
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap');
-
-        .vp-root { --gold: #93c5fd; --gold-light: #3b82f6; --gold-dim: #2563eb; --ink: transparent; --ink-2: #0b2f4a; --ink-3: #114a70; --surface: #0b2f4a; --border: rgba(255,255,255,.1); --text: #ffffff; --muted: #cbd5e1; font-family: 'DM Sans', sans-serif; color: var(--text); background: var(--ink); }
+      <style dangerouslySetInnerHTML={{ __html: `
+        .vp-root { --gold: #93c5fd; --gold-light: #3b82f6; --gold-dim: #2563eb; --ink: transparent; --ink-2: #0b0f1d; --ink-3: #114a70; --surface: #0b2f4a; --border: rgba(255,255,255,.1); --text: #ffffff; --muted: #94a3b8; font-family: 'DM Sans', sans-serif; color: var(--text); background: var(--ink); }
         .vp-title { font-family: 'Bebas Neue', sans-serif; letter-spacing: .04em; line-height: 1.05; }
 
-        .vp-progress-track { position: relative; height: 4px; background: rgba(255,255,255,.12); border-radius: 2px; cursor: pointer; }
-        .vp-progress-track:hover { height: 6px; }
-        .vp-progress-track:hover .vp-progress-thumb { opacity: 1; }
-        .vp-progress-fill { position: absolute; left: 0; top: 0; height: 100%; border-radius: 2px; background: #3b82f6; pointer-events: none; transition: height .15s; }
-        .vp-progress-thumb { position: absolute; top: 50%; width: 12px; height: 12px; border-radius: 50%; background: #60a5fa; transform: translateY(-50%); opacity: 0; pointer-events: none; transition: opacity .15s; box-shadow: 0 0 8px #60a5fa; }
-        .vp-progress-input { position: absolute; inset: -6px 0; opacity: 0; cursor: pointer; width: 100%; }
+        .vp-progress-track { position: relative; height: 4px; background: rgba(255,255,255,.12); border-radius: 2px; cursor: pointer; transition: height .2s cubic-bezier(0.4, 0, 0.2, 1); }
+        .vp-progress-track:hover { height: 8px; }
+        .vp-progress-track:hover .vp-progress-thumb { opacity: 1; transform: translateY(-50%) scale(1.2); }
+        .vp-progress-fill { position: absolute; left: 0; top: 0; height: 100%; border-radius: 2px; background: linear-gradient(90deg, #3b82f6, #60a5fa); pointer-events: none; transition: height .15s; }
+        .vp-progress-thumb { position: absolute; top: 50%; width: 14px; height: 14px; border-radius: 50%; background: #ffffff; transform: translateY(-50%) scale(0.8); opacity: 0; pointer-events: none; transition: all .2s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 0 12px rgba(96, 165, 250, 0.6); }
+        .vp-progress-input { position: absolute; inset: -10px 0; opacity: 0; cursor: pointer; width: 100%; z-index: 10; }
 
-        .vp-btn-primary { background: #114a70; border: 1px solid rgba(255,255,255,.1); color: #ffffff; font-weight: 600; border-radius: 6px; padding: 8px 18px; font-size: 13px; letter-spacing: .04em; transition: opacity .15s, transform .1s; }
-        .vp-btn-primary:hover { opacity: 0.9; background: #1a5b87; }
-        .vp-btn-primary:active { transform: scale(.97); }
-        .vp-btn-primary.active { box-shadow: 0 0 16px rgba(59,130,246,0.5); border: 1px solid rgba(255,255,255,0.4); }
+        .vp-btn-primary { background: #3b82f6; border: 1px solid rgba(255,255,255,.1); color: #ffffff; font-weight: 600; border-radius: 8px; padding: 10px 24px; font-size: 14px; letter-spacing: .04em; transition: all .2s; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2); }
+        .vp-btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4); background: #2563eb; }
+        .vp-btn-primary:active { transform: translateY(0) scale(.98); }
+        .vp-btn-primary.active { background: #ffffff; color: #000; box-shadow: 0 0 16px rgba(255,255,255,0.3); border: none; }
 
-        .vp-btn-ghost { background: rgba(255,255,255,.05); border: 1px solid var(--border); color: var(--text); border-radius: 6px; padding: 8px 14px; font-size: 13px; transition: background .15s, border-color .15s; }
-        .vp-btn-ghost:hover { background: rgba(139,92,246,.15); border-color: var(--gold-light); }
-        .vp-btn-ghost.active { border-color: var(--gold-light); color: var(--gold-light); }
+        .vp-btn-ghost { background: rgba(255,255,255,.05); border: 1px solid var(--border); color: var(--text); border-radius: 8px; padding: 10px 18px; font-size: 14px; transition: all .2s; backdrop-filter: blur(8px); }
+        .vp-btn-ghost:hover { background: rgba(255,255,255,.1); border-color: #60a5fa; color: #60a5fa; }
+        .vp-btn-ghost.active { border-color: #60a5fa; color: #60a5fa; background: rgba(96, 165, 250, 0.1); }
 
-        .vp-icon-btn { display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 6px; background: rgba(255,255,255,.05); border: 1px solid var(--border); color: var(--text); transition: background .15s, border-color .15s; }
-        .vp-icon-btn:hover { background: rgba(139,92,246,.15); border-color: var(--gold-light); }
+        .vp-icon-btn { display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 8px; background: rgba(11, 47, 74, 0.3); border: 1px solid var(--border); color: var(--text); transition: all .2s; backdrop-filter: blur(12px); }
+        .vp-icon-btn:hover { background: rgba(255,255,255,0.15); border-color: var(--gold-light); transform: translateY(-1px); }
 
-        .vp-icon-plain { display: flex; align-items: center; justify-content: center; background: transparent; border: none; color: white; padding: 6px; transform: scale(1.1); opacity: 0.9; transition: transform .1s, opacity .15s; cursor: pointer; }
-        .vp-icon-plain:hover { opacity: 1; transform: scale(1.25); }
+        .vp-icon-plain { display: flex; align-items: center; justify-content: center; background: transparent; border: none; color: white; padding: 8px; transform: scale(1); opacity: 0.85; transition: transform .2s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity .2s; cursor: pointer; }
+        .vp-icon-plain:hover { opacity: 1; transform: scale(1.3); }
 
-        .vp-controls-fade { transition: opacity .35s; }
-        .vp-controls-hidden { opacity: 0; pointer-events: none; }
+        .vp-controls-fade { transition: opacity .4s ease-out, transform .4s ease-out; }
+        .vp-controls-hidden { opacity: 0; transform: translateY(10px); pointer-events: none; }
 
-        .vp-chip { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 4px; font-size: 11px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; border: 1px solid var(--border); color: var(--muted); background: rgba(255,255,255,.03); }
-        .vp-chip.gold { border-color: rgba(255,255,255,.4); color: #ffffff; background: rgba(255,255,255,.1); }
+        .vp-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; border: 1px solid var(--border); color: var(--muted); background: rgba(255,255,255,.04); transition: border-color .2s; }
+        .vp-chip:hover { border-color: #3b82f6; color: #ffffff; }
+        .vp-chip.gold { border-color: #3b82f6; color: #ffffff; background: rgba(59, 130, 246, 0.15); }
 
-        .vp-tag { display: inline-block; padding: 4px 11px; border-radius: 3px; font-size: 11px; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1); color: var(--text); letter-spacing: .05em; }
+        .vp-tag { display: inline-block; padding: 5px 14px; border-radius: 6px; font-size: 12px; font-weight: 500; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1); color: #cbd5e1; letter-spacing: .04em; transition: all .2s; cursor: pointer; }
+        .vp-tag:hover { background: #3b82f6; color: #ffffff; transform: translateY(-1px); }
 
-        .vp-bar-bg { background: rgba(255,255,255,.07); border-radius: 2px; overflow: hidden; }
-        .vp-bar-fill { height: 100%; border-radius: 2px; background: #3b82f6; transition: width .5s cubic-bezier(.4,0,.2,1); }
+        .vp-bar-bg { background: rgba(255,255,255,.07); border-radius: 4px; overflow: hidden; height: 8px !important; }
+        .vp-bar-fill { height: 100%; border-radius: 4px; background: linear-gradient(90deg, #3b82f6, #60a5fa); transition: width .8s cubic-bezier(.4, 0, .2, 1); box-shadow: 0 0 10px rgba(59, 130, 246, 0.4); }
 
-        .vp-vol-slider { -webkit-appearance: none; appearance: none; height: 3px; border-radius: 2px; background: rgba(255,255,255,.15); outline: none; width: 70px; }
-        .vp-vol-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 11px; height: 11px; border-radius: 50%; background: #ffffff; cursor: pointer; }
+        .vp-vol-slider { -webkit-appearance: none; appearance: none; height: 4px; border-radius: 2px; background: rgba(255,255,255,.2); outline: none; width: 0; opacity: 0; transition: all 0.3s; }
+        .vp-vol-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; border-radius: 50%; background: #ffffff; cursor: pointer; box-shadow: 0 0 6px rgba(0,0,0,0.5); }
 
-        .vp-spinner { width: 28px; height: 28px; border: 2px solid rgba(255,255,255,.2); border-top-color: #3b82f6; border-radius: 50%; animation: spin .8s linear infinite; }
+        .vp-spinner { width: 48px; height: 48px; border: 3px solid rgba(255,255,255,.1); border-top-color: #3b82f6; border-radius: 50%; animation: spin 1s cubic-bezier(0.5, 0.1, 0.4, 0.9) infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        .vp-toast { position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%); background: var(--surface); border: 1px solid var(--border); color: var(--text); padding: 10px 20px; border-radius: 8px; font-size: 13px; z-index: 100; white-space: nowrap; box-shadow: 0 8px 32px rgba(0,0,0,.3); animation: toastIn .25s ease; }
-        @keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(10px); } }
+        .vp-toast { position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%); background: rgba(11, 47, 74, 0.9); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.1); color: var(--text); padding: 12px 24px; border-radius: 12px; font-size: 14px; font-weight: 500; z-index: 1000; box-shadow: 0 12px 40px rgba(0,0,0,.5); animation: toastIn .3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        @keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(20px); } }
 
-        .vp-divider { height: 1px; background: var(--border); }
-
-        .vp-scrollchips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
-        .vp-scrollchips::-webkit-scrollbar { display: none; }
-
-        .vp-info-panel { border-radius: 12px; border: 1px solid var(--border); background: var(--ink-2); padding: 16px; }
-        .vp-reaction-grid { display: flex; flex-direction: column; gap: 16px; align-items: stretch; }
-        .vp-btn-group { display: flex; flex-direction: row; gap: 8px; }
-        .vp-btn-group button { flex: 1; }
+        .vp-info-panel { border-radius: 20px; border: 1px solid rgba(255,255,255,0.08); background: linear-gradient(145deg, rgba(11, 47, 74, 0.4), rgba(11, 47, 74, 0.6)); backdrop-filter: blur(20px); padding: 32px; box-shadow: 0 20px 50px rgba(0,0,0,0.2); }
+        .vp-divider { height: 1px; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent); }
         
-        .vp-controls-row { display: flex; align-items: center; gap: 4px; padding: 0 4px; }
-        .vp-time-display { flex: 1; text-align: center; font-size: 10px; color: #b8b4a8; font-variant-numeric: tabular-nums; letter-spacing: .06em; }
-        .vp-play-btn-text { display: none; }
+        .vp-error-card { background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(20px); border-radius: 24px; border: 1px solid rgba(255, 255, 255, 0.1); padding: 48px 32px; box-shadow: 0 24px 64px rgba(0,0,0,0.6); }
 
         @media (min-width: 640px) {
-          .vp-info-panel { padding: 24px 24px 20px; }
-          .vp-reaction-grid { flex-direction: row; justify-content: space-between; align-items: flex-start; gap: 20px; }
-          .vp-btn-group { flex-direction: column; min-width: 120px; }
-          .vp-controls-row { gap: 8px; padding: 0; }
-          .vp-vol-slider { display: block; }
-          .vp-time-display { font-size: 12px; }
-          .vp-play-btn-text { display: inline; font-family: 'DM Sans'; font-size: 12px; font-weight: 600; letter-spacing: .05em; }
+          .vp-info-panel { padding: 40px; }
+          .vp-tag { padding: 6px 16px; font-size: 13px; }
+          .vp-vol-slider.active { width: 80px; opacity: 1; margin-left: 8px; }
         }
-        @media (max-width: 639px) {
-          .vp-vol-slider { display: none; }
-        }
-      `}</style>
+      ` }} />
 
       <div className="vp-root space-y-4">
 
@@ -524,21 +439,30 @@ export default function VideoPlayer({ video, token }: { video: VideoItem; token:
             )}
 
             {playbackError && (
-              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,.7)', padding: 40, textAlign: 'center' }}>
-                <div className="max-w-md space-y-4">
-                  <div className="mx-auto w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center border border-red-500/50">
-                    <svg viewBox="0 0 24 24" fill="currentColor" className="h-6 w-6 text-red-500"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.4)', padding: 24, zIndex: 60 }}>
+                <div className="vp-error-card max-w-lg text-center">
+                  <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-red-500/20 border border-red-500/40">
+                    <svg viewBox="0 0 24 24" fill="currentColor" className="h-8 w-8 text-red-500"><path d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10zm-1-7v2h2v-2h-2zm0-8v6h2V7h-2z"/></svg>
                   </div>
-                  <h3 className="text-lg font-bold text-white">Playback Error</h3>
-                  <p className="text-sm text-white/70 leading-relaxed">
-                    {playbackError}
+                  <h3 className="mb-3 text-2xl font-bold text-white uppercase tracking-wider">Playback System Failure</h3>
+                  <p className="mb-8 text-sm text-slate-400 leading-relaxed pb-4">
+                    The player encountered a fatal error while loading the stream. This is usually due to a <strong>network timeout</strong> or the backend being <strong>offline</strong>.
                   </p>
-                  <button 
-                    onClick={() => window.location.reload()}
-                    className="mt-4 px-6 py-2 rounded-full bg-white text-black text-xs font-bold uppercase tracking-widest hover:bg-white/90"
-                  >
-                    Reload Page
-                  </button>
+                  <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                    <button 
+                      onClick={() => window.location.reload()}
+                      className="px-8 py-3 rounded-xl bg-white text-black text-sm font-bold uppercase tracking-widest hover:bg-slate-200 transition-all active:scale-95"
+                    >
+                      Retry Connection
+                    </button>
+                    <button 
+                      onClick={() => window.open('/api/proxy?url=' + encodeURIComponent(video.videoUrl), '_blank')}
+                      className="px-8 py-3 rounded-xl bg-slate-800 text-white text-sm font-bold uppercase tracking-widest hover:bg-slate-700 transition-all active:scale-95"
+                    >
+                      Test Connectivity
+                    </button>
+                  </div>
+                  <p className="mt-8 text-[11px] text-red-400 font-bold uppercase tracking-widest">ERROR: {playbackError}</p>
                 </div>
               </div>
             )}
@@ -565,29 +489,6 @@ export default function VideoPlayer({ video, token }: { video: VideoItem; token:
                       ))}
                     </div>
                   </div>
-                  {/* Quality Column */}
-                  {hlsLevels.length > 0 && (
-                    <div>
-                      <h3 className="mb-2 text-xs font-semibold uppercase tracking-widest text-muted">Quality</h3>
-                      <div className="flex flex-col items-start gap-1">
-                        <button
-                          onClick={() => setQuality(-1)}
-                          className={`text-left text-sm font-medium transition hover:text-white ${currentLevel === -1 ? 'text-white' : 'text-muted'}`}
-                        >
-                          Auto
-                        </button>
-                        {hlsLevels.map((lvl, idx) => (
-                          <button
-                            key={idx}
-                            onClick={() => setQuality(idx)}
-                            className={`text-left text-sm font-medium transition hover:text-white ${currentLevel === idx ? 'text-white' : 'text-muted'}`}
-                          >
-                            {lvl.height}p
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
                 </div>
               </div>
             )}

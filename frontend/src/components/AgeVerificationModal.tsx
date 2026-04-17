@@ -52,18 +52,18 @@ export default function AgeVerificationModal() {
         {/* Main Content Area */}
         <div className="px-6 py-8 sm:px-10 sm:py-10">
           <h1 className="mb-6 text-2xl font-bold text-gray-900 sm:text-3xl">
-            xHamster is <span className="text-[#ef4444]">adults only</span> website!
+            VibeStream is <span className="text-[#ef4444]">adults only</span> website!
           </h1>
 
           <div className="space-y-4 text-sm leading-relaxed text-gray-700 sm:text-base">
             <p>
-              The content available on xHamster may contain pornographic materials.
+              The content available on VibeStream may contain pornographic materials.
             </p>
             <p>
-              xHamster is strictly limited to those over 18 or of legal age in your jurisdiction, whichever is greater.
+              VibeStream is strictly limited to those over 18 or of legal age in your jurisdiction, whichever is greater.
             </p>
             <p>
-              One of our core goals is to help parents restrict access to xHamster for minors, so we have ensured that xHamster is, and remains, fully compliant with the RTA (Restricted to Adults) code. This means that all access to the site can be blocked by simple parental control tools. It is important that responsible parents and guardians take the necessary steps to prevent minors from accessing unsuitable content online, especially age-restricted content.
+              One of our core goals is to help parents restrict access to VibeStream for minors, so we have ensured that VibeStream is, and remains, fully compliant with the RTA (Restricted to Adults) code. This means that all access to the site can be blocked by simple parental control tools. It is important that responsible parents and guardians take the necessary steps to prevent minors from accessing unsuitable content online, especially age-restricted content.
             </p>
             <p>
               Anyone with a minor in their household or under their supervision should implement basic parental control protections, including computer hardware and device settings, software installation, or ISP filtering services, to block your minors from accessing inappropriate content.
@@ -73,13 +73,13 @@ export default function AgeVerificationModal() {
           {/* Action Area */}
           <div className="mt-8 flex flex-col items-center">
             <p className="mb-4 font-bold text-gray-900">
-              To enter xHamster you must be 18 or older
+              To enter VibeStream you must be 18 or older
             </p>
             <button
               onClick={confirm}
               className="w-full rounded-md bg-[#ef4444] py-3.5 text-base font-bold text-white transition hover:bg-[#dc2626] sm:py-4"
             >
-              I&apos;m 18 or older — enter xHamster
+              I&apos;m 18 or older — enter VibeStream
             </button>
           </div>
         </div>

@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import type { CategoryItem } from '../lib/types';
+import { proxyUrl } from '../lib/api';
 
 export default function CategoryCard({
   category,
@@ -23,7 +24,7 @@ export default function CategoryCard({
           {collage.map((src, i) => (
             <div key={i} className="relative h-full w-full bg-[#0a0f1d]">
               <Image
-                src={src}
+                src={proxyUrl(src)}
                 alt={`${category.name} grid image ${i+1}`}
                 fill
                 sizes="(max-width: 640px) 45vw, 25vw"

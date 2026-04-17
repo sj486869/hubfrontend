@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import type { VideoItem } from '../lib/types';
+import { proxyUrl } from '../lib/api';
 
 function formatViews(views: number) {
   if (views >= 1_000_000) {
@@ -34,7 +35,7 @@ export default function VideoCard({ video, priority = false }: { video: VideoIte
       <Link href={`/video/${video.id}`} className="block">
         <div className="relative aspect-video overflow-hidden">
           <Image
-            src={video.thumbnail || 'https://via.placeholder.com/300x200'}
+            src={proxyUrl(video.thumbnail) || 'https://via.placeholder.com/300x200'}
             alt={video.title}
             fill
             priority={priority}

@@ -27,8 +27,9 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 origins = sorted({
     os.getenv('FRONTEND_URL', 'http://localhost:3000'),
-    os.getenv('FRONTEND_URL_PROD', 'https://test.shopwithsuman.in'),
-    'https://test.shopwithsuman.in',
+    os.getenv('FRONTEND_URL_PROD', 'https://shopwithsuman.in'),
+    'https://shopwithsuman.in',
+    'https://www.shopwithsuman.in',
     'http://localhost:3000',
     'http://127.0.0.1:3000',
     'http://localhost:3001',
@@ -41,8 +42,8 @@ origins = sorted({
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    # Allow localhost, 127.0.0.1, and any 10.x / 192.168.x LAN IP on any port
-    allow_origin_regex=r'https?://(localhost|127\.0\.0\.1|test\.shopwithsuman\.in|10\.\d+\.\d+\.\d+|172\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+)(:\d+)?$',
+    # Allow localhost, 127.0.0.1, shopwithsuman.in (and www subdomain), and any LAN IP
+    allow_origin_regex=r'https?://(localhost|127\.0\.0\.1|((www|api)\.)?shopwithsuman\.in|10\.\d+\.\d+\.\d+|172\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+)(:\d+)?$',
     allow_credentials=True,
     allow_methods=['*'],
     allow_headers=['*'],
@@ -90,6 +91,8 @@ async def serve_media(file_path: str, request: Request):
         'Accept-Ranges': 'bytes',
         'Content-Length': str(file_size),
         'Cache-Control': 'public, max-age=3600',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, OPTIONS',
     }
 
     range_header = request.headers.get('range')

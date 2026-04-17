@@ -15,15 +15,6 @@ const API_BASE = (IS_SERVER
  * - On the client side under HTTPS, rewrites http:// backend URLs to proxy.
  */
 export function proxyUrl(url: string): string {
-  if (!url) return url;
-  // Only rewrite if we're in the browser on HTTPS and the asset is HTTP
-  if (
-    typeof window !== 'undefined' &&
-    window.location.protocol === 'https:' &&
-    url.startsWith('http:')
-  ) {
-    return `/api/proxy?url=${encodeURIComponent(url)}`;
-  }
   return url;
 }
 
@@ -113,6 +104,7 @@ async function request<T>(path: string, options: RequestInit = {}) {
   try {
     const response = await fetch(`${API_BASE}${path}`, {
       cache: 'no-store',
+      credentials: 'include',
       headers,
       ...options,
     });
@@ -149,6 +141,7 @@ function uploadFormData<T>(
 ) {
   return new Promise<T>((resolve, reject) => {
     const xhr = new XMLHttpRequest();
+    xhr.withCredentials = true;
     xhr.open(method, `${API_BASE}${path}`);
     xhr.setRequestHeader('Authorization', `Bearer ${token}`);
 
@@ -270,6 +263,10 @@ export async function refreshTokens(refreshToken: string) {
     method: 'POST',
     body: JSON.stringify({ refresh_token: refreshToken }),
   });
+}
+
+export async function logoutUser() {
+  return request<{ message: string }>('/auth/logout', { method: 'POST' });
 }
 
 export async function createCategory(token: string, payload: CategoryPayload) {

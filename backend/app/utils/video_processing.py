@@ -7,7 +7,7 @@ from fastapi import HTTPException, status
 
 from .uploads import STREAM_DIRECTORY, UPLOAD_ROOT
 
-HLS_SEGMENT_SECONDS = 45
+HLS_SEGMENT_SECONDS = 4
 
 
 def _run_command(command: list[str]) -> subprocess.CompletedProcess[str]:

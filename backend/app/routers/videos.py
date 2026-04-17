@@ -10,7 +10,6 @@ from ..database import db
 from ..auth import get_current_user, require_admin
 from ..schemas import ActionResponse, VideoCreate, VideoOut, LikeRequest
 from ..utils.uploads import build_asset_url_from_base, get_media_base_url, resolve_asset_url_path, rewrite_asset_url_base
-from ..utils.video_processing import create_hls_stream, detect_duration_seconds, format_duration
 
 router = APIRouter(tags=['videos'])
 
@@ -53,48 +52,7 @@ def serialize_video(video: dict, comments: Optional[List[dict]] = None, media_ba
     }
 
 
-async def ensure_video_stream(video: dict, media_base_url: str) -> dict:
-    if video.get('stream_url'):
-        if not video['stream_url'].startswith(media_base_url):
-            stream_path = resolve_asset_url_path(video['stream_url'])
-            relative_stream = stream_path.relative_to(stream_path.parents[2])
-            next_stream_url = build_asset_url_from_base(media_base_url, relative_stream)
-            updated = await db.videos.find_one_and_update(
-                {'_id': video['_id']},
-                {'$set': {'stream_url': next_stream_url}},
-                return_document=ReturnDocument.AFTER,
-            )
-            video = updated or video
-        if not video.get('duration'):
-            source_path = resolve_asset_url_path(video['video_url'])
-            duration_seconds = await asyncio.to_thread(detect_duration_seconds, source_path)
-            duration = format_duration(duration_seconds)
-            updated = await db.videos.find_one_and_update(
-                {'_id': video['_id']},
-                {'$set': {'duration': duration}},
-                return_document=ReturnDocument.AFTER,
-            )
-            return updated or video
-        return video
 
-    try:
-        source_path = resolve_asset_url_path(video['video_url'])
-    except HTTPException:
-        return video
-
-    if not source_path.exists():
-        return video
-
-    playlist_path, duration_seconds = await asyncio.to_thread(create_hls_stream, source_path)
-    relative_playlist = playlist_path.relative_to(source_path.parents[1])
-    stream_url = build_asset_url_from_base(media_base_url, relative_playlist)
-    duration = format_duration(duration_seconds)
-    updated = await db.videos.find_one_and_update(
-        {'_id': video['_id']},
-        {'$set': {'stream_url': stream_url, 'duration': duration}},
-        return_document=ReturnDocument.AFTER,
-    )
-    return updated or video
 
 
 @router.get('/videos', response_model=List[VideoOut])
@@ -146,7 +104,6 @@ async def get_video(id: str, request: Request):
             'created_at': created_at,
         })
 
-    video = await ensure_video_stream(video, get_media_base_url(request))
     return serialize_video(video, comments, media_base_url=get_media_base_url(request))
 
 @router.post('/videos', response_model=VideoOut)
@@ -169,12 +126,43 @@ async def like_video(payload: LikeRequest, user: dict = Depends(get_current_user
     if not video:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Video not found')
 
+    user_liked = payload.video_id in user.get('liked_videos', [])
+    user_disliked = payload.video_id in user.get('disliked_videos', [])
+    
+    update = {}
+    user_update = {}
+    
     if payload.action == 'like':
-        update = {'$inc': {'likes': 1}}
-        await db.users.update_one({'_id': user['_id']}, {'$addToSet': {'liked_videos': payload.video_id}})
+        if not user_liked:
+            inc = {'likes': 1}
+            pull = {}
+            if user_disliked:
+                inc['dislikes'] = -1
+                pull['disliked_videos'] = payload.video_id
+            update['$inc'] = inc
+            user_update['$addToSet'] = {'liked_videos': payload.video_id}
+            if pull:
+                user_update['$pull'] = pull
     else:
-        update = {'$inc': {'dislikes': 1}}
-    updated = await db.videos.find_one_and_update({'_id': video_id}, update, return_document=ReturnDocument.AFTER)
+        if not user_disliked:
+            inc = {'dislikes': 1}
+            pull = {}
+            if user_liked:
+                inc['likes'] = -1
+                pull['liked_videos'] = payload.video_id
+            update['$inc'] = inc
+            user_update['$addToSet'] = {'disliked_videos': payload.video_id}
+            if pull:
+                user_update['$pull'] = pull
+
+    if user_update:
+        await db.users.update_one({'_id': user['_id']}, user_update)
+    
+    if update:
+        updated = await db.videos.find_one_and_update({'_id': video_id}, update, return_document=ReturnDocument.AFTER)
+    else:
+        updated = video
+
     return {
         'likes': updated.get('likes', 0),
         'dislikes': updated.get('dislikes', 0),

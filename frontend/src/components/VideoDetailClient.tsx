@@ -5,6 +5,7 @@ import type { VideoItem } from '../lib/types';
 import { getStoredAccessToken } from '../lib/session';
 import { trackWatchHistory } from '../lib/api';
 import VideoPlayer from './VideoPlayer';
+import CommentSection from './CommentSection';
 import RelatedVideos from './RelatedVideos';
 
 export default function VideoDetailClient({ video, related }: { video: VideoItem; related: VideoItem[] }) {
@@ -23,6 +24,7 @@ export default function VideoDetailClient({ video, related }: { video: VideoItem
       {/* Main column: video player always shown */}
       <section className="animate-fade-up space-y-4 sm:space-y-6">
         <VideoPlayer video={video} token={token} />
+        <CommentSection videoId={video.id} comments={video.comments || []} token={token} />
       </section>
 
       {/* Desktop sidebar: related videos */}

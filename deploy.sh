@@ -66,5 +66,5 @@ echo "--------------------------------------------------------"
 echo "Status Check:"
 pm2 status
 echo "--------------------------------------------------------"
-echo "Visit your site: https://test.shopwithsuman.in"
+echo "Visit your site: https://shopwithsuman.in"
 echo "Check logs if any app is offline: pm2 logs"
